@@ -22,32 +22,37 @@ class _TextEditingDialogState extends State<TextEditingDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Введите желаемый текст'),
-              TextField(
-                controller: textEditingController,
-              ),
-              const VSpacer(16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: () => onLoad(textEditingController.text),
-                    child: const Text('Сохранить'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Отменить'),
-                  ),
-                ],
-              ),
-            ],
+  Widget build(BuildContext context) => Center(
+    child: Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Введите желаемый текст'),
+                TextField(
+                  controller: textEditingController,
+                  minLines: 1,
+                  maxLines: 3,
+                ),
+                const VSpacer(16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => onLoad(textEditingController.text),
+                      child: const Text('Сохранить'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Отменить'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      );
+  );
 }

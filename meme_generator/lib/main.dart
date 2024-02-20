@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:url_strategy/url_strategy.dart';
+
 import 'src/navigation/app_navigation/app_route_information_parser.dart';
 import 'src/navigation/app_navigation/app_route_information_provider.dart';
 import 'src/navigation/app_navigation/app_router_delegate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  setPathUrlStrategy();
 
   runApp(const MyApp());
 }
@@ -29,6 +33,7 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      debugShowCheckedModeBanner: false,
       routerDelegate: _routerDelegate,
       routeInformationParser: _routeInformationParser,
       routeInformationProvider: _routeInformationProvider,

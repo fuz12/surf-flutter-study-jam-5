@@ -1,4 +1,10 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../widgets/dialogs/dialogs.dart';
 
@@ -9,66 +15,84 @@ class MemeGeneratorScreen extends StatefulWidget {
   State<MemeGeneratorScreen> createState() => _MemeGeneratorScreenState();
 }
 
-class _MemeGeneratorScreenState extends State<MemeGeneratorScreen> with SingleTickerProviderStateMixin {
-  late final TabController tabController = TabController(length: 1, vsync: this);
+class _MemeGeneratorScreenState extends State<MemeGeneratorScreen>
+    with SingleTickerProviderStateMixin {
+  final _memeSheetKey = GlobalKey();
 
-  String url = 'https://i.cbc.ca/1.6713656.1679693029!/fileImage/httpImage/image.jpg_gen/derivatives/16x9_780/this-is-fine.jpg';
-  String text = 'Здесь мог бы быть ваш мем';
+  late final TabController tabController =
+      TabController(length: 1, vsync: this);
 
-  // Future<void> _onLoadImageByUrl(String url) async {
-  //   // final bytes = (await NetworkAssetBundle(Uri.parse(url))
-  //   //         .load(url))
-  //   //         .buffer
-  //   //         .asUint8List();
-  //   setState(() {
-  //     this.url = url;
-  //   });
-  // }
+  Uint8List? _imageBytes;
+  String _text = 'Здесь мог бы быть ваш мем';
 
-  void _onEditImageUrl(String url) {
+  Future<void> _onShareTap() async {
+    final boundary = _memeSheetKey.currentContext!.findRenderObject()
+        as RenderRepaintBoundary?;
+    final image = await boundary?.toImage();
+    final byteData = await image?.toByteData(format: ImageByteFormat.png);
+    final bytes = byteData?.buffer.asUint8List();
+
+    if (bytes == null) return;
+
+    if (mounted && kIsWeb) {
+      await Dialogs.showMeme(context, bytes);
+    } else {
+      await Share.shareXFiles([XFile.fromData(bytes, mimeType: 'image/png')]);
+    }
+  }
+
+  void _editImageUrl(Uint8List bytes) {
     setState(() {
-      this.url = url;
+      _imageBytes = bytes;
     });
   }
 
-  void _onEditText(String text) {
+  void _editText(String text) {
     setState(() {
-      this.text = text;
+      _text = text;
     });
   }
 
   Future<void> _onShowEditingImageUrl() async {
-    await Dialogs.showNetworkImagePickerDialog(context, _onEditImageUrl, url);
+    await Dialogs.showNetworkImagePickerDialog(context, _editImageUrl);
   }
 
   Future<void> _onShowEditingText() async {
-    await Dialogs.showTextEditing(context, _onEditText, text);
+    await Dialogs.showTextEditing(context, _editText, _text);
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
+        floatingActionButton: !kIsWeb ? _ShareButton(
+          onTap: _onShareTap,
+        ) : const SizedBox(),
         backgroundColor: Colors.black,
         body: Center(
           child: ColoredBox(
             color: Colors.black,
-            child: _MemeDecoration(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Spacer(),
-                  _MemeSheet(
-                    url: url,
-                    onImageTap: _onShowEditingImageUrl,
-                    text: text,
-                    onTextTap: _onShowEditingText,
-                  ),
-                  const Spacer(),
-                  // _BottomTabBar(
-                  //   onAddImageByUrl: _onEditImageUrl,
-                  //   controller: tabController,
-                  // ),
-                ],
+            child: SizedBox(
+              height: 500,
+              width: 500,
+              child: _MemeDecoration(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    const Spacer(),
+                    _MemeSheet(
+                      memeSheetKey: _memeSheetKey,
+                      imageBytes: _imageBytes,
+                      onImageTap: _onShowEditingImageUrl,
+                      text: _text,
+                      onTextTap: _onShowEditingText,
+                    ),
+                    const Spacer(),
+                    // _BottomTabBar(
+                    //   onAddImageByUrl: _onEditImageUrl,
+                    //   controller: tabController,
+                    // ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -78,16 +102,18 @@ class _MemeGeneratorScreenState extends State<MemeGeneratorScreen> with SingleTi
 
 class _MemeSheet extends StatelessWidget {
   const _MemeSheet({
-    required this.url,
+    required this.imageBytes,
     required this.onImageTap,
     required this.text,
     required this.onTextTap,
+    required this.memeSheetKey,
   });
 
-  final String url;
+  final Uint8List? imageBytes;
   final VoidCallback onImageTap;
   final String text;
   final VoidCallback onTextTap;
+  final Key memeSheetKey;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -95,17 +121,20 @@ class _MemeSheet extends StatelessWidget {
           vertical: 20,
           horizontal: 50,
         ),
-        child: Column(
-          children: [
-            _MemeImage(
-              url: url,
-              onTap: onImageTap,
-            ),
-            _MemeText(
-              text: text,
-              onTap: onTextTap,
-            ),
-          ],
+        child: RepaintBoundary(
+          key: memeSheetKey,
+          child: Column(
+            children: [
+              _MemeImage(
+                bytes: imageBytes,
+                onTap: onImageTap,
+              ),
+              _MemeText(
+                text: text,
+                onTap: onTextTap,
+              ),
+            ],
+          ),
         ),
       );
 }
@@ -136,40 +165,47 @@ class _MemeText extends StatelessWidget {
 
 class _MemeImage extends StatelessWidget {
   const _MemeImage({
-    required this.url,
+    required this.bytes,
     required this.onTap,
   });
 
-  final String url;
+  final Uint8List? bytes;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: SizedBox(
-          width: double.infinity,
+  Widget build(BuildContext context) {
+    final bytes = this.bytes;
+    return GestureDetector(
+        onTap: onTap,
+        child: SizedBox(
+          width: 200,
           height: 200,
           child: _MemeDecoration(
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Image.network(
-                url,
-                fit: BoxFit.contain,
+              child: bytes != null ? Image.memory(
+                bytes,
+                fit: BoxFit.fill,
                 errorBuilder: (context, error, stackTrace) => const Center(
-                  child: Text(
-                    'Что-то пошло не так, улыбнитесь!',
-                    style: TextStyle(
-                      fontFamily: 'Impact',
-                      color: Colors.white,
-                      fontSize: 40,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Что-то пошло не так,\nулыбнись!',
+                      maxLines: 2,
+                      style: TextStyle(
+                        fontFamily: 'Impact',
+                        color: Colors.white,
+                        fontSize: 40,
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ) : Image.asset('assets/empty_image.jpeg'),
             ),
           ),
         ),
-  );
+      );
+  }
 }
 
 class _MemeDecoration extends StatelessWidget {
@@ -213,6 +249,24 @@ class _BottomTabBar extends StatelessWidget {
               icon: const Icon(Icons.add),
             ),
           ],
+        ),
+      );
+}
+
+class _ShareButton extends StatelessWidget {
+  const _ShareButton({
+    required this.onTap,
+  });
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        onPressed: onTap,
+        icon: const Icon(
+          Icons.share,
+          color: Colors.white,
+          size: 40,
         ),
       );
 }
