@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:meme_generator/screen/meme_generator_screen.dart';
+import 'src/navigation/app_navigation/app_route_information_parser.dart';
+import 'src/navigation/app_navigation/app_route_information_provider.dart';
+import 'src/navigation/app_navigation/app_router_delegate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -8,18 +10,27 @@ void main() async {
 }
 
 /// App,s main widget.
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   /// Constructor for [MyApp].
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _routerDelegate = AppRouterDelegate();
+  final _routeInformationParser = AppRouteInformationParser();
+  final _routeInformationProvider = AppRouteInformationProvider();
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MemeGeneratorScreen(),
+      routerDelegate: _routerDelegate,
+      routeInformationParser: _routeInformationParser,
+      routeInformationProvider: _routeInformationProvider,
     );
-  }
 }
